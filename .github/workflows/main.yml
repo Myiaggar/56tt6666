@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       crd_token:
-        description: 'Paste your CRD headless code here'
+        description: 'Paste your CRD headless registration command here'
         required: true
         default: ''
       pin:
@@ -31,7 +31,7 @@ jobs:
               $chromeUrl = "https://dl.google.com/tag/s/appguid%3D%7B8A69D345-D564-463C-AFF1-A69D9E530F96%7D/au/0/edgedl/chrome/install/GoogleChromeStandaloneEnterprise64.msi"
               $chromeMsi = "$TempDir\chrome.msi"
               Invoke-WebRequest -Uri $chromeUrl -OutFile $chromeMsi -UseBasicParsing
-              Start-Process msiexec -ArgumentList "/i `"$chromeMsi`" /qn" -Wait
+              Start-Process msiexec -ArgumentList "/i `"$chromeMsi`" /quiet /norestart" -Wait
           }
 
       - name: Install CRD host & register headless
@@ -43,14 +43,14 @@ jobs:
           $TempDir = "$env:TEMP\crd_install"
           New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
           
-          # Download CRD host installer
-          $crdUrl = "https://dl.google.com/chrome-remote-desktop/chrome-remote-desktop-current.msi"
+          # Correct CRD host download link
+          $crdUrl = "https://dl.google.com/edgedl/chrome-remote-desktop/chromeremotedesktophost.msi"
           $crdMsi = "$TempDir\crd.msi"
           Invoke-WebRequest -Uri $crdUrl -OutFile $crdMsi -UseBasicParsing
-          Start-Process msiexec -ArgumentList "/i `"$crdMsi`" /qn" -Wait
+          Start-Process msiexec -ArgumentList "/i `"$crdMsi`" /quiet /norestart" -Wait
           
           Write-Output "Registering host headlessly..."
-          # Run the headless command from input
+          # Run the headless registration command provided via input box
           Invoke-Expression $HeadlessCommand
           Write-Output "CRD registration complete. Your machine should now appear in your devices list."
 
