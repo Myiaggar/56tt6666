@@ -1,0 +1,61 @@
+name: CRD-RDP-Setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      crd_token:
+        description: 'Paste your CRD headless code here'
+        required: true
+        default: ''
+      pin:
+        description: '6-digit PIN for CRD'
+        required: true
+        default: '123456'
+
+jobs:
+  setup-crd:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Chrome silently
+        shell: powershell
+        run: |
+          Write-Output "Installing Chrome..."
+          if (Get-Command winget -ErrorAction SilentlyContinue) {
+              winget install --id Google.Chrome -e --silent
+          } else {
+              $TempDir = "$env:TEMP\chrome_install"
+              New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+              $chromeUrl = "https://dl.google.com/tag/s/appguid%3D%7B8A69D345-D564-463C-AFF1-A69D9E530F96%7D/au/0/edgedl/chrome/install/GoogleChromeStandaloneEnterprise64.msi"
+              $chromeMsi = "$TempDir\chrome.msi"
+              Invoke-WebRequest -Uri $chromeUrl -OutFile $chromeMsi -UseBasicParsing
+              Start-Process msiexec -ArgumentList "/i `"$chromeMsi`" /qn" -Wait
+          }
+
+      - name: Install CRD host & register headless
+        shell: powershell
+        run: |
+          $HeadlessCommand = '${{ github.event.inputs.crd_token }}'
+          $PIN = '${{ github.event.inputs.pin }}'
+          Write-Output "Installing Chrome Remote Desktop host..."
+          $TempDir = "$env:TEMP\crd_install"
+          New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+          
+          # Download CRD host installer
+          $crdUrl = "https://dl.google.com/chrome-remote-desktop/chrome-remote-desktop-current.msi"
+          $crdMsi = "$TempDir\crd.msi"
+          Invoke-WebRequest -Uri $crdUrl -OutFile $crdMsi -UseBasicParsing
+          Start-Process msiexec -ArgumentList "/i `"$crdMsi`" /qn" -Wait
+          
+          Write-Output "Registering host headlessly..."
+          # Run the headless command from input
+          Invoke-Expression $HeadlessCommand
+          Write-Output "CRD registration complete. Your machine should now appear in your devices list."
+
+      - name: Cleanup
+        shell: powershell
+        run: |
+          Remove-Item -Recurse -Force "$env:TEMP\chrome_install"
+          Remove-Item -Recurse -Force "$env:TEMP\crd_install"
